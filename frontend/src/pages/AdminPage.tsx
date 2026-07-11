@@ -1028,7 +1028,7 @@ function HeroTab({ token }: { token: string }) {
       </form>
 
       <PreviewDrawer open={preview} onClose={() => setPreview(false)} title="Homepage Hero">
-        <div className="pis-preview-hero" style={form.bgImage ? { backgroundImage: `linear-gradient(165deg, rgba(6,14,38,.42) 0%, rgba(11,25,66,.36) 40%, rgba(16,38,92,.32) 70%, rgba(9,18,48,.48) 100%), url(${form.bgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+        <div className="pis-preview-hero" style={form.bgImage ? { backgroundImage: `linear-gradient(165deg, rgba(4,9,24,.72) 0%, rgba(8,18,50,.66) 40%, rgba(11,26,68,.62) 70%, rgba(5,11,28,.78) 100%), url(${form.bgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
           {form.badge && <div className="pis-preview-hero-badge">{form.badge}</div>}
           <h1>{form.headline || "Your headline goes here"}</h1>
           <p>{form.subtext || "Your subtext goes here."}</p>
