@@ -468,6 +468,10 @@
   letter-spacing: .5px; color: var(--wl-gold);
   border: 1px solid rgba(255,255,255,.08);
 }
+.pis-wl-mark--img {
+  width: 64px; height: 64px; background: rgba(255,255,255,.04); padding: 6px;
+}
+.pis-wl-mark--img img { width: 100%; height: 100%; object-fit: contain; }
 
 .pis-wl-title {
   font-size: clamp(21px, 2vw, 24px); font-weight: 700; color: var(--wl-text);
@@ -636,70 +640,6 @@
 .pis-activity-time { font-size: 11.5px; color: var(--pis-muted); }
 .pis-activity-empty { text-align: center; padding: 30px 16px; color: var(--pis-muted); font-size: 13px; }
 
-/* ════════════════════════════════════════════════════════════════════
-   TUTORIAL TOUR — spotlight overlay
-   ════════════════════════════════════════════════════════════════════ */
-.pis-tour-root { position: fixed; inset: 0; z-index: 9500; }
-.pis-tour-blocker { position: fixed; inset: 0; z-index: 9500; background: transparent; cursor: default; }
-.pis-tour-hole {
-  position: fixed; z-index: 9501; pointer-events: none; border-radius: 14px;
-  box-shadow: 0 0 0 9999px rgba(7,11,28,.74), 0 0 0 3px var(--pis-accent), 0 0 28px 6px rgba(91,127,255,.5);
-  transition: top .35s cubic-bezier(.4,0,.2,1), left .35s cubic-bezier(.4,0,.2,1), width .35s cubic-bezier(.4,0,.2,1), height .35s cubic-bezier(.4,0,.2,1);
-  animation: pis-tour-glow 2.2s ease-in-out infinite;
-}
-@keyframes pis-tour-glow {
-  0%, 100% { box-shadow: 0 0 0 9999px rgba(7,11,28,.74), 0 0 0 3px var(--pis-accent), 0 0 24px 4px rgba(91,127,255,.45); }
-  50% { box-shadow: 0 0 0 9999px rgba(7,11,28,.74), 0 0 0 3px var(--pis-accent), 0 0 34px 9px rgba(91,127,255,.65); }
-}
-.pis-tour-card {
-  position: fixed; z-index: 9502;
-  background: var(--pis-surface); color: var(--pis-text); border-radius: 16px;
-  padding: 18px 20px 16px; box-shadow: var(--pis-shadow-lg);
-  animation: pis-card-in .3s cubic-bezier(.2,.9,.3,1) both;
-  transition: top .35s cubic-bezier(.4,0,.2,1), left .35s cubic-bezier(.4,0,.2,1);
-  box-sizing: border-box;
-}
-.pis-tour-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.pis-tour-badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 10.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-  color: var(--pis-accent); background: var(--pis-accent-light); padding: 4px 9px; border-radius: 999px;
-}
-.pis-tour-x { background: none; border: none; cursor: pointer; color: var(--pis-muted); padding: 2px; display: flex; }
-.pis-tour-x:hover { color: var(--pis-text); }
-.pis-tour-content { animation: pis-tour-content-in .22s var(--pis-ease-out) both; }
-@keyframes pis-tour-content-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-.pis-tour-card h4 { margin: 0 0 6px; font-size: 15.5px; font-weight: 800; letter-spacing: -.2px; }
-.pis-tour-card p { margin: 0 0 14px; font-size: 13px; color: var(--pis-muted); line-height: 1.55; }
-.pis-tour-dots { display: flex; gap: 5px; margin-bottom: 14px; }
-.pis-tour-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--pis-border); transition: width .2s var(--pis-ease), background .2s var(--pis-ease); }
-.pis-tour-dot--on { width: 16px; background: var(--pis-accent); }
-.pis-tour-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.pis-tour-skip { background: none; border: none; color: var(--pis-muted); font-size: 12px; font-weight: 600; cursor: pointer; padding: 6px 2px; transition: color .15s var(--pis-ease); }
-.pis-tour-skip:hover { color: var(--pis-text); text-decoration: underline; }
-.pis-tour-back, .pis-tour-next {
-  display: inline-flex; align-items: center; gap: 5px;
-  border-radius: 8px; padding: 7px 13px; font-size: 12.5px; font-weight: 700; cursor: pointer; border: none;
-  transition: background .15s var(--pis-ease), transform .1s var(--pis-ease), box-shadow .15s var(--pis-ease);
-}
-.pis-tour-back { background: var(--pis-surface-alt); color: var(--pis-text); border: 1px solid var(--pis-border); }
-.pis-tour-back:hover { background: var(--pis-border); }
-.pis-tour-back:active, .pis-tour-next:active { transform: scale(.96); }
-.pis-tour-next { background: var(--pis-accent); color: #fff; box-shadow: 0 2px 8px rgba(11,31,92,.25); }
-.pis-tour-next:hover { background: var(--pis-accent-hover); transform: translateY(-1px); }
-/* Mobile sizing is now computed in JS (TutorialTour.tsx) via isNarrow / maxHeight,
-   so no width override is needed here — it would fight the inline styles. */
-
-/* Help button gentle pulse to invite first-time use */
-.pis-help-pulse { position: relative; }
-.pis-help-pulse::after {
-  content: ""; position: absolute; inset: -2px; border-radius: 10px;
-  border: 1.5px solid var(--pis-accent); opacity: 0; animation: pis-help-ring 2.6s ease-out infinite;
-}
-@keyframes pis-help-ring {
-  0% { opacity: .55; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.45); }
-}
 
 .pis-overview-split { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; align-items: flex-start; margin-top: 4px; }
 @media (max-width: 880px) { .pis-overview-split { grid-template-columns: 1fr; } }

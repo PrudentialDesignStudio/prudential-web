@@ -6,10 +6,9 @@ import {
   ExternalLink, Music, LogOut, Eye, Sun, Moon, Upload,
   CheckCircle, AlertCircle, X, ChevronRight, Bell, FileText,
   Edit3, Trash2, Plus, Save, RefreshCw, Image as ImageIcon,
-  Video, HelpCircle, Sparkles, Clock, PlayCircle
+  Video, Sparkles, Clock
 } from "lucide-react";
 import { uploadManyToCloudinary, uploadToCloudinary, type UploadResult } from "../lib/cloudinaryUpload";
-import { TutorialTour, useTutorial, type TourStep } from "../components/TutorialTour";
 import {
   TrashTab, useCommandPalette, CommandPalette, CommandPaletteHint, type PaletteItem,
   guardNavigate, useUnsavedGuard, PreviewDrawer, EmptyState, Skeleton, SkeletonList, SkeletonCard, SkeletonGrid,
@@ -182,6 +181,18 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
   );
 }
 
+const ADMIN_LOGO_URL = "https://res.cloudinary.com/dagt2a1w0/image/upload/v1773768204/ChatGPT_Image_Jan_31__2026__04_03_54_AM_1769828712771_d65sw2.png";
+
+function LoginLogo() {
+  const [err, setErr] = useState(false);
+  if (err) return <div className="pis-wl-mark">PIS</div>;
+  return (
+    <div className="pis-wl-mark pis-wl-mark--img">
+      <img src={ADMIN_LOGO_URL} alt="Prudential International School" onError={() => setErr(true)} />
+    </div>
+  );
+}
+
 // --- Login Page ---
 function LoginPage({ onLogin }: { onLogin: (t: string, remember?: boolean) => void }) {
   const [pw, setPw] = useState("");
@@ -230,7 +241,7 @@ function LoginPage({ onLogin }: { onLogin: (t: string, remember?: boolean) => vo
   return (
     <div className="pis-wl-root">
       <div className="pis-wl-card">
-        <div className="pis-wl-mark">PIS</div>
+        <LoginLogo />
         <h1 className="pis-wl-title">Admin Sign In</h1>
         <p className="pis-wl-sub">Prudential International School</p>
 
@@ -420,7 +431,7 @@ function OverviewTab({ token, setTab }: { token: string; setTab: (t: Tab) => voi
         </div>
       )}
 
-      <div className="pis-stats-grid" data-tour="stats">
+      <div className="pis-stats-grid">
         {stats.map(s => (
           <StatCard key={s.label} s={s} onClick={() => setTab(s.tab)} />
         ))}
@@ -1017,7 +1028,7 @@ function HeroTab({ token }: { token: string }) {
       </form>
 
       <PreviewDrawer open={preview} onClose={() => setPreview(false)} title="Homepage Hero">
-        <div className="pis-preview-hero" style={form.bgImage ? { backgroundImage: `url(${form.bgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+        <div className="pis-preview-hero" style={form.bgImage ? { backgroundImage: `linear-gradient(165deg, rgba(6,14,38,.88) 0%, rgba(11,25,66,.82) 40%, rgba(16,38,92,.78) 70%, rgba(9,18,48,.9) 100%), url(${form.bgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
           {form.badge && <div className="pis-preview-hero-badge">{form.badge}</div>}
           <h1>{form.headline || "Your headline goes here"}</h1>
           <p>{form.subtext || "Your subtext goes here."}</p>
@@ -2025,7 +2036,7 @@ function SubmissionsTab({ token }: { token: string }) {
 }
 
 // --- Settings ---
-function SettingsTab({ token, onPasswordChanged, dark, toggleDark, onStartTour }: { token: string; onPasswordChanged: () => void; dark: boolean; toggleDark: () => void; onStartTour: () => void }) {
+function SettingsTab({ token, onPasswordChanged, dark, toggleDark }: { token: string; onPasswordChanged: () => void; dark: boolean; toggleDark: () => void }) {
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [saving, setSaving] = useState(false);
@@ -2042,17 +2053,6 @@ function SettingsTab({ token, onPasswordChanged, dark, toggleDark, onStartTour }
   return (
     <div className="pis-content">
       <div className="pis-page-header"><div><h2>Settings</h2><p>Dashboard preferences and security settings.</p></div></div>
-
-      <div className="pis-card">
-        <div className="pis-card-title">Help &amp; Onboarding</div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: 2 }}>Dashboard Tour</div>
-            <div style={{ fontSize: 13, color: "var(--pis-muted)" }}>Replay the guided walkthrough of the dashboard anytime.</div>
-          </div>
-          <button className="pis-btn-ghost" onClick={onStartTour}><PlayCircle size={15} /> Replay Tutorial</button>
-        </div>
-      </div>
 
       <div className="pis-card">
         <div className="pis-card-title">Appearance</div>
@@ -2092,82 +2092,12 @@ function SettingsTab({ token, onPasswordChanged, dark, toggleDark, onStartTour }
 }
 
 // --- Main App ---
-function buildTourSteps(openSidebar: () => void, closeSidebar: () => void, setTab: (t: Tab) => void): TourStep[] {
-  const isMobile = () => window.innerWidth < 920;
-  return [
-    {
-      selector: '[data-tour="brand"]',
-      title: "Welcome to your dashboard",
-      body: "This is the control center for the Prudential International School website. This tour walks through every part of it, start to finish.",
-      onEnter: () => { closeSidebar(); setTab("overview"); },
-    },
-    {
-      selector: '[data-tour="sidebar"]',
-      title: "Everything, organized",
-      body: "Dashboard, Pages, Media, School, and Admin. Every part of the website lives in exactly one of these.",
-      onEnter: () => { if (isMobile()) openSidebar(); },
-    },
-    {
-      selector: '[data-tour="nav-Pages"]',
-      title: "Pages — static content",
-      body: "Homepage Hero, About, Academics, etc. Edit the text or image, then hit Save.",
-      onEnter: () => { if (isMobile()) openSidebar(); },
-    },
-    {
-      selector: '[data-tour="nav-Media"]',
-      title: "Media Hub",
-      body: "The Gallery and Anthems live here. Upload and reorder your photos and videos easily.",
-      onEnter: () => { if (isMobile()) openSidebar(); },
-    },
-    {
-      selector: '[data-tour="nav-School"]',
-      title: "School Life",
-      body: "Meet the Team, Announcements, Events, and Testimonials. This is where you'll update the site day-to-day.",
-      onEnter: () => { if (isMobile()) openSidebar(); },
-    },
-    {
-      selector: '[data-tour="nav-Admin"]',
-      title: "Admin & Operations",
-      body: "Contact Info, Admissions inbox, Enquiries, and Security settings.",
-      onEnter: () => { if (isMobile()) openSidebar(); },
-    },
-    {
-      selector: '[data-tour="stats"]',
-      title: "At a Glance",
-      body: "Live numbers for unread enquiries, gallery count, and more. Click any card to jump to that section.",
-      onEnter: () => { closeSidebar(); setTab("overview"); },
-    },
-    {
-      selector: '[data-tour="palette-hint"]',
-      title: "Instant Search",
-      body: "Press Ctrl+K (or ⌘K) to jump to any section instantly without using the sidebar.",
-      onEnter: () => { closeSidebar(); },
-    },
-    {
-      selector: '[data-tour="theme-toggle"]',
-      title: "Theme Switcher",
-      body: "Switch between light and dark mode anytime. Your preference is saved automatically.",
-    },
-    {
-      selector: '[data-tour="view-site"]',
-      title: "View Live Site",
-      body: "Open the public site in a new tab to see your changes in action.",
-    },
-    {
-      selector: '[data-tour="help-btn"]',
-      title: "Need Help?",
-      body: "Replay this tour anytime if you need a refresher on how the dashboard works.",
-    },
-  ];
-}
-
 export default function AdminPage() {
   const { token, save, clear } = useToken();
   const [authed, setAuthed] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { dark, toggle: toggleDark } = useDarkMode();
-  const { run: tourRun, start: startTour, finish: finishTour } = useTutorial(authed);
   const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
 
   useEffect(() => {
@@ -2178,12 +2108,6 @@ export default function AdminPage() {
 
   const handleLogin = (t: string, remember: boolean = true) => { save(t, remember); setAuthed(true); };
   const handleLogout = () => { clear(); setAuthed(false); };
-  const handleStartTour = () => { setTab("overview"); setSidebarOpen(false); startTour(); };
-  const handleCloseTour = () => { finishTour(); setSidebarOpen(false); };
-  const TOUR_STEPS = React.useMemo(
-    () => buildTourSteps(() => setSidebarOpen(true), () => setSidebarOpen(false), (t: Tab) => setTab(t)),
-    []
-  );
 
   if (!authed) return <LoginPage onLogin={handleLogin} />;
 
@@ -2243,7 +2167,6 @@ export default function AdminPage() {
   return (
     <div className="pis-wrap">
       <ToastContainer />
-      {tourRun && <TutorialTour steps={TOUR_STEPS} onClose={handleCloseTour} />}
 
       <header className="pis-topbar">
         <div className="pis-topbar-left">
@@ -2251,20 +2174,17 @@ export default function AdminPage() {
             <span /><span /><span />
           </button>
           <img src="https://res.cloudinary.com/dagt2a1w0/image/upload/v1773768204/ChatGPT_Image_Jan_31__2026__04_03_54_AM_1769828712771_d65sw2.png" alt="PIS" className="pis-topbar-logo" />
-          <div className="pis-topbar-brand" data-tour="brand">
+          <div className="pis-topbar-brand">
             <span>Prudential International School</span>
             <span>Admin Dashboard</span>
           </div>
         </div>
         <div className="pis-topbar-right">
           <CommandPaletteHint />
-          <button className={`pis-topbar-icon-btn${!tourRun ? " pis-help-pulse" : ""}`} onClick={handleStartTour} title="Replay dashboard tour" aria-label="Replay dashboard tour" data-tour="help-btn">
-            <HelpCircle size={16} />
-          </button>
-          <button className="pis-topbar-icon-btn" onClick={toggleDark} title={dark ? "Switch to light mode" : "Switch to dark mode"} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} data-tour="theme-toggle">
+          <button className="pis-topbar-icon-btn" onClick={toggleDark} title={dark ? "Switch to light mode" : "Switch to dark mode"} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}>
             {dark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <a href="/" target="_blank" rel="noreferrer" className="pis-topbar-btn" data-tour="view-site">
+          <a href="/" target="_blank" rel="noreferrer" className="pis-topbar-btn">
             <Eye size={14} /> View Site
           </a>
           <button className="pis-topbar-btn pis-topbar-logout" onClick={handleLogout}>
@@ -2276,10 +2196,10 @@ export default function AdminPage() {
       <div className="pis-body">
         {sidebarOpen && <div className="pis-overlay" onClick={() => setSidebarOpen(false)} />}
 
-        <aside className={`pis-sidebar${sidebarOpen ? " pis-sidebar-open" : ""}`} data-tour="sidebar">
+        <aside className={`pis-sidebar${sidebarOpen ? " pis-sidebar-open" : ""}`}>
           <nav className="pis-nav">
             {NAV_GROUPS.map(group => (
-              <div key={group.label} className="pis-nav-group" data-tour={`nav-${group.label}`}>
+              <div key={group.label} className="pis-nav-group">
                 <div className="pis-nav-group-label">{group.label}</div>
                 {group.tabs.map(t => (
                   <button key={t.id} className={`pis-nav-item${tab === t.id ? " pis-nav-active" : ""}`} onClick={() => navigateTo(t.id)}>
@@ -2324,7 +2244,7 @@ export default function AdminPage() {
               {tab === "submissions"       && <SubmissionsTab       token={token} />}
               {tab === "trash"             && <TrashTab             token={token} />}
               {tab === "share"             && <ShareTab />}
-              {tab === "settings"          && <SettingsTab          token={token} onPasswordChanged={handleLogout} dark={dark} toggleDark={toggleDark} onStartTour={handleStartTour} />}
+              {tab === "settings"          && <SettingsTab          token={token} onPasswordChanged={handleLogout} dark={dark} toggleDark={toggleDark} />}
             </motion.div>
           </AnimatePresence>
         </main>

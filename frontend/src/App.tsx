@@ -4,7 +4,6 @@ import Topbar from "@/components/Topbar";
 import Navbar from "@/components/Navbar";
 import NoticesBell from "@/components/NoticesBell";
 import Footer from "@/components/Footer";
-import LoadingScreen from "@/components/LoadingScreen";
 import ScrollProgress from "@/components/ScrollProgress";
 import HomePage from "@/pages/HomePage";
 import AboutPage from "@/pages/AboutPage";
@@ -19,6 +18,16 @@ import AnthemPage from "@/pages/AnthemPage";
 import ApplyPage from "@/pages/ApplyPage";
 
 const AdminPage = lazy(() => import("@/pages/AdminPage"));
+
+const SCHOOL_LOGO_URL = "https://res.cloudinary.com/dagt2a1w0/image/upload/v1773768204/ChatGPT_Image_Jan_31__2026__04_03_54_AM_1769828712771_d65sw2.png";
+
+function AdminBootFallback() {
+  return (
+    <div style={{ minHeight: "100vh", background: "#080f1e", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <img src={SCHOOL_LOGO_URL} alt="Prudential International School" style={{ width: 56, height: 56, objectFit: "contain", opacity: .9 }} />
+    </div>
+  );
+}
 
 export type Page = "home" | "about" | "academics" | "life" | "gallery" | "contact" | "team" | "rules" | "portal" | "anthem" | "apply";
 
@@ -60,18 +69,17 @@ function isAdminRoute() {
 
 export default function App() {
   const [page, setPage] = useState<Page>(getPageFromPath);
-  const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(isAdminRoute);
-  const [transitionOut, setTransitionOut] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useSEO(page);
 
+  // Smooth, near-instant reveal — no artificial delay or full-screen splash.
+  // A single animation frame lets the page mount before the fade-in class
+  // is applied, so the transition is visible but never blocks the visitor.
   useEffect(() => {
-    const t = setTimeout(() => {
-      setTransitionOut(true);
-      setTimeout(() => setLoading(false), 800);
-    }, 2800);
-    return () => clearTimeout(t);
+    const raf = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   useEffect(() => {
@@ -101,35 +109,32 @@ export default function App() {
 
   if (isAdmin) {
     return (
-      <Suspense fallback={<div style={{ minHeight: "100vh", background: "#080f1e" }} />}>
+      <Suspense fallback={<AdminBootFallback />}>
         <AdminPage />
       </Suspense>
     );
   }
 
   return (
-    <>
-      {loading && <LoadingScreen transitionOut={transitionOut} />}
-      <div className={`site-wrapper${!loading ? " site-revealed" : ""}`}>
-        <ScrollProgress />
-        <Topbar />
-        <Navbar current={page} navigate={navigate} />
-        <main>
-          {page === "home"      && <HomePage navigate={navigate} />}
-          {page === "about"     && <AboutPage />}
-          {page === "academics" && <AcademicsPage />}
-          {page === "life"      && <StudentLifePage />}
-          {page === "gallery"   && <GalleryPage />}
-          {page === "contact"   && <ContactPage />}
-          {page === "team"      && <TeamPage />}
-          {page === "rules"     && <RulesPage />}
-          {page === "portal"    && <PortalPage />}
-          {page === "anthem"    && <AnthemPage />}
-          {page === "apply"     && <ApplyPage navigate={navigate} />}
-        </main>
-        <Footer navigate={navigate} />
-        <NoticesBell />
-      </div>
-    </>
+    <div className={`site-wrapper${ready ? " site-revealed" : ""}`}>
+      <ScrollProgress />
+      <Topbar />
+      <Navbar current={page} navigate={navigate} />
+      <main>
+        {page === "home"      && <HomePage navigate={navigate} />}
+        {page === "about"     && <AboutPage />}
+        {page === "academics" && <AcademicsPage />}
+        {page === "life"      && <StudentLifePage />}
+        {page === "gallery"   && <GalleryPage />}
+        {page === "contact"   && <ContactPage />}
+        {page === "team"      && <TeamPage />}
+        {page === "rules"     && <RulesPage />}
+        {page === "portal"    && <PortalPage />}
+        {page === "anthem"    && <AnthemPage />}
+        {page === "apply"     && <ApplyPage navigate={navigate} />}
+      </main>
+      <Footer navigate={navigate} />
+      <NoticesBell />
+    </div>
   );
 }

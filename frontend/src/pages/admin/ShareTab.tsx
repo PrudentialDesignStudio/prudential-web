@@ -1,6 +1,9 @@
-import React from "react";
+import React, { useRef } from "react";
 import { QrCode, Share2, Download, Copy, ExternalLink, History, User, Globe, ShieldCheck } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 import { flash } from "../AdminPage";
+
+const SCHOOL_LOGO_URL = "https://res.cloudinary.com/dagt2a1w0/image/upload/v1773768204/ChatGPT_Image_Jan_31__2026__04_03_54_AM_1769828712771_d65sw2.png";
 
 function AuditLogs() {
   const logs = [
@@ -44,14 +47,21 @@ function AuditLogs() {
 
 export default function ShareTab() {
   const siteUrl = "https://prudentialschool.com.ng";
-  
-  // Branded QR Code URL (using a high-quality generator API)
-  // Navy background (#050a18) with Gold text (#d4af37)
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${siteUrl}&color=d4af37&bgcolor=050a18&format=png`;
+  const qrCanvasWrapRef = useRef<HTMLDivElement>(null);
 
   const copyLink = () => {
     navigator.clipboard.writeText(siteUrl);
     flash("Website link copied to clipboard!");
+  };
+
+  const downloadQr = () => {
+    const canvas = qrCanvasWrapRef.current?.querySelector("canvas");
+    if (!canvas) { flash("QR code isn't ready yet — try again in a moment", false); return; }
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = "PIS_QR_Code.png";
+    link.click();
+    flash("QR code downloaded");
   };
 
   return (
@@ -64,25 +74,43 @@ export default function ShareTab() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40 }}>
         {/* QR CODE CARD */}
         <div className="pis-card" style={{ padding: 40, textAlign: "center" }}>
-          <div style={{ 
-            background: "#050a18", 
-            padding: 32, 
-            borderRadius: 32, 
-            display: "inline-block", 
-            border: "1px solid var(--pis-accent)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-            marginBottom: 24
-          }}>
-            <img src={qrUrl} alt="School QR Code" style={{ width: 240, height: 240 }} />
+          <div
+            ref={qrCanvasWrapRef}
+            style={{
+              background: "#050a18",
+              padding: 32,
+              borderRadius: 32,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "1px solid var(--pis-accent)",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+              marginBottom: 24
+            }}
+          >
+            <QRCodeCanvas
+              value={siteUrl}
+              size={800}
+              bgColor="#050a18"
+              fgColor="#d4af37"
+              level="H"
+              imageSettings={{
+                src: SCHOOL_LOGO_URL,
+                height: 160,
+                width: 160,
+                excavate: true,
+              }}
+              style={{ width: 240, height: 240 }}
+            />
           </div>
           <h3 style={{ fontSize: 24, marginBottom: 8 }}>Branded QR Code</h3>
           <p style={{ color: "var(--pis-text-dim)", marginBottom: 32 }}>
-            Custom generated in Navy & Gold. Perfect for print brochures, posters, and business cards.
+            Custom generated in Navy &amp; Gold with the school crest at the center. Perfect for print brochures, posters, and business cards.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-            <a href={qrUrl} download="PIS_QR_Code.png" className="pis-btn-primary">
-              <Download size={16} /> Download 4K PNG
-            </a>
+            <button onClick={downloadQr} className="pis-btn-primary">
+              <Download size={16} /> Download High-Res PNG
+            </button>
           </div>
         </div>
 

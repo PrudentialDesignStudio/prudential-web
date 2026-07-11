@@ -87,52 +87,9 @@ img { max-width: 100%; }
 .mobile-link:hover, .mobile-link.active { background: rgba(255,255,255,.07); color: #fff; }
 .mobile-apply { background: var(--crimson); color: #fff; border: none; padding: 13px 20px; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: all .25s; }
 
-/* ── LOADING SCREEN ── */
-.ls-root { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.ls-bg { position: absolute; inset: 0; background: linear-gradient(135deg,#020918 0%,#060f24 40%,#0a1a3e 70%,#040c1e 100%); }
-.ls-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(0,174,239,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(0,174,239,.06) 1px,transparent 1px); background-size: 56px 56px; }
-.ls-orb { position: absolute; border-radius: 50%; pointer-events: none; }
-.ls-orb-a { width: 600px; height: 600px; background: radial-gradient(circle,rgba(0,174,239,.1) 0%,transparent 70%); top: -160px; right: -160px; }
-.ls-orb-b { width: 400px; height: 400px; background: radial-gradient(circle,rgba(178,34,34,.08) 0%,transparent 70%); bottom: -100px; left: -100px; }
-.ls-orb-c { width: 300px; height: 300px; background: radial-gradient(circle,rgba(255,215,0,.06) 0%,transparent 70%); top: 50%; left: 50%; transform: translate(-50%,-50%); }
-.ls-center { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 24px; }
-.ls-logo-wrap { position: relative; width: 130px; height: 130px; display: flex; align-items: center; justify-content: center; }
-.ls-ring { position: absolute; border-radius: 50%; border: 1px solid; }
-.ls-ring-a { inset: -18px; border-color: rgba(0,174,239,.2); animation: lsRing 3s linear infinite; }
-.ls-ring-b { inset: -10px; border-color: rgba(255,215,0,.15); animation: lsRing 4s linear infinite reverse; }
-.ls-ring-c { inset: -28px; border-color: rgba(178,34,34,.1); animation: lsRing 6s linear infinite; }
-.ls-logo-bg { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle,rgba(0,174,239,.1) 0%,transparent 70%); animation: lsPulse 2.4s ease-in-out infinite; }
-.ls-logo { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; padding: 10px; position: relative; z-index: 1; animation: lsFloat 4s ease-in-out infinite; }
-.ls-logo-fb { display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display',serif; font-weight: 800; font-size: 52px; color: var(--gold); background: var(--navy); border-radius: 50%; }
-.ls-name-wrap { text-align: center; }
-.ls-school-name { font-family: 'Playfair Display',serif; font-size: clamp(16px,3vw,22px); font-weight: 700; color: #fff; letter-spacing: 1px; animation: lsFadeUp 0.8s ease 0.3s both; }
-.ls-sep { display: flex; align-items: center; gap: 12px; margin-top: 8px; animation: lsFadeUp 0.8s ease 0.5s both; }
-.ls-sep span:first-child, .ls-sep span:last-child { flex: 1; height: 1px; background: rgba(255,255,255,.12); }
-.ls-sep span:nth-child(2) { font-size: 10px; font-weight: 700; color: rgba(255,215,0,.6); letter-spacing: 3px; }
-.ls-bar-wrap { display: flex; align-items: center; gap: 12px; width: 280px; animation: lsFadeUp 0.8s ease 0.6s both; }
-.ls-bar-track { flex: 1; height: 4px; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; position: relative; }
-.ls-bar-fill { height: 100%; background: linear-gradient(90deg,var(--cyan),var(--gold)); border-radius: 99px; transition: width 0.1s linear; }
-.ls-bar-shine { position: absolute; inset: 0; background: linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent); animation: lsShine 1.5s ease infinite; }
-.ls-pct { font-size: 12px; font-weight: 700; color: var(--cyan); min-width: 36px; text-align: right; }
-.ls-tagline { font-size: 11px; letter-spacing: 3px; color: rgba(255,255,255,.35); text-transform: uppercase; animation: lsFadeUp 0.8s ease 0.8s both; }
-.ls-curtain { position: absolute; left: 0; right: 0; height: 50%; background: #020918; z-index: 3; transition: transform 0.95s cubic-bezier(0.86,0,0.07,1); }
-.ls-curtain-top { top: 0; transform-origin: top; }
-.ls-curtain-bottom { bottom: 0; transform-origin: bottom; }
-.ls-exit .ls-curtain-top { transform: translateY(-100%); }
-.ls-exit .ls-curtain-bottom { transform: translateY(100%); }
-.ls-exit .ls-center { animation: lsFadeOut 0.5s ease 0.15s both; }
-.ls-exit { pointer-events: none; }
-
-@keyframes lsRing { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes lsPulse { 0%,100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.12); } }
-@keyframes lsFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
-@keyframes lsFadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes lsFadeOut { to { opacity: 0; transform: scale(0.96); } }
-@keyframes lsShine { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
-
 /* ── SITE REVEAL ── */
-.site-wrapper { opacity: 0; transform: translateY(10px) scale(0.995); filter: blur(3px); transition: opacity 0.9s ease, transform 1s cubic-bezier(0.22,1,0.36,1), filter 0.7s ease; }
-.site-wrapper.site-revealed { opacity: 1; transform: none; filter: none; }
+.site-wrapper { opacity: 0; transform: translateY(8px); transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22,1,0.36,1); }
+.site-revealed { opacity: 1; transform: none; }
 
 /* ── ANIMATE IN ── */
 .animate-in-wrap { opacity: 0; transform: translateY(22px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22,1,0.36,1); }
@@ -187,8 +144,8 @@ img { max-width: 100%; }
 .h-eyebrow { display: none; }
 .h-t1 { display: block; font-family: 'Playfair Display',serif; font-size: clamp(28px,5vw,52px); font-weight: 400; color: rgba(255,255,255,.7); margin-bottom: 8px; }
 .h-t2 { display: block; font-family: 'Playfair Display',serif; font-size: clamp(36px,6vw,72px); font-weight: 800; line-height: 1.1; margin-bottom: 20px; }
-.gold-t { color: var(--gold); }
-.cyan-t { color: var(--cyan); }
+.gold-t { color: var(--gold); text-shadow: 0 0 22px rgba(255,215,0,.35); }
+.cyan-t { color: var(--cyan); text-shadow: 0 0 22px rgba(0,174,239,.3); }
 .h-t3 { display: block; font-size: clamp(14px,2vw,17px); color: var(--text-dim); max-width: 580px; margin: 0 auto 36px; line-height: 1.8; font-weight: 400; }
 
 /* Ribbon */
@@ -212,6 +169,7 @@ img { max-width: 100%; }
 
 /* ── HERO v2 — mature, editorial redesign (no logo, no spin/orb/ribbon) ── */
 .hp-hero--v2 {
+  position: relative;
   /* Fallback shown only until a background photo is uploaded via the dashboard */
   background: linear-gradient(175deg,#050b1a 0%,#0a1530 55%,#081026 100%);
 }
@@ -219,9 +177,38 @@ img { max-width: 100%; }
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  /* No overlay, no tint, no grid — the photo renders exactly as uploaded */
 }
-.h-content--v2 { padding: 96px 32px 88px; max-width: 780px; }
+
+/* Blue/navy gradient wash — always sits between the photo and the text so
+   copy stays legible no matter how bright the uploaded photo is. */
+.hp-hero-overlay {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(165deg, rgba(6,14,38,.88) 0%, rgba(11,25,66,.82) 40%, rgba(16,38,92,.78) 70%, rgba(9,18,48,.9) 100%);
+}
+
+/* Soft circular glows, like light bleeding through the gradient */
+.hp-hero-glow {
+  position: absolute; z-index: 1; border-radius: 50%; pointer-events: none;
+  filter: blur(60px);
+}
+.hp-hero-glow--1 {
+  width: 420px; height: 420px; top: -120px; left: -80px;
+  background: radial-gradient(circle, rgba(120,150,255,.22) 0%, transparent 70%);
+}
+.hp-hero-glow--2 {
+  width: 480px; height: 480px; bottom: -160px; right: -100px;
+  background: radial-gradient(circle, rgba(80,110,220,.18) 0%, transparent 70%);
+}
+
+/* Faint scattered dot texture, matching the reference starfield */
+.hp-hero-dots {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .5;
+  background-image: radial-gradient(rgba(255,255,255,.35) 1px, transparent 1px);
+  background-size: 46px 46px;
+}
+
+.h-content--v2 { position: relative; z-index: 2; padding: 96px 32px 88px; max-width: 780px; }
 
 .h-kicker {
   display: inline-flex; align-items: center; gap: 10px;

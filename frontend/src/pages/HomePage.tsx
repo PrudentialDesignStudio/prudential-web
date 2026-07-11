@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Page } from "@/App";
 import Testimonials from "@/components/Testimonials";
 import StudentJourney from "@/components/StudentJourney";
+import Particles from "@/components/Particles";
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -161,6 +162,15 @@ export default function HomePage({ navigate }: Props) {
         className={`hp-hero hp-hero--v2${hero.bg_image ? " hp-hero--photo" : ""}`}
         style={hero.bg_image ? { backgroundImage: `url(${hero.bg_image})` } : undefined}
       >
+        {hero.bg_image && <div className="hp-hero-overlay" />}
+        <div className="hp-hero-glow hp-hero-glow--1" />
+        <div className="hp-hero-glow hp-hero-glow--2" />
+        <div className="hp-hero-dots" />
+        <div className="hero-orb hero-orb-1" />
+        <div className="hero-orb hero-orb-2" />
+        <div className="hero-ray hero-ray-1" />
+        <div className="hero-ray hero-ray-2" />
+        <Particles count={14} />
         <div className="h-content h-content--v2">
           <div className="h-kicker">
             <span className="h-kicker-line" />
