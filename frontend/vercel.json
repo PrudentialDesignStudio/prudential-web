@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://prudential-web-production.up.railway.app/api/$1" },
+    { "source": "/api/(.*)", "destination": "https://prudential-backend.onrender.com/api/$1" },
     { "source": "/((?!api).*)", "destination": "/index.html" }
   ],
   "headers": [
