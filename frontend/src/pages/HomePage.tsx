@@ -225,16 +225,17 @@ export default function HomePage({ navigate }: Props) {
             <p>Plenty of schools teach. We try to do something harder — actually prepare students for life.</p>
             <div className="section-bar" />
           </div>
-          <div className="features-grid">
+          <div className="journey-grid">
             {displayFeatures.map((f, i) => (
-              <div key={f.title} className="card feature-card sr" style={{ transitionDelay: `${0.05 + i * 0.1}s` }}>
-                <div className="feature-card-accent" />
-                <div className="feature-card-inner">
-                  <div className="feature-card-label"><span className="feature-card-label-line" />Why Choose Us</div>
-                  <div className="icon-wrap" style={{ color: f.color }}>{f.icon}</div>
-                  <h3>{f.title}</h3>
-                  <p>{f.body}</p>
+              <div key={f.title} className="journey-card sr" style={{ transitionDelay: `${0.05 + i * 0.1}s` }}>
+                <div className="journey-connector" style={{ background: f.color }} />
+                <div className="journey-icon-wrap" style={{ background: f.color + "18", color: f.color }}>
+                  {f.icon}
+                  <span className="journey-step-num" style={{ color: f.color }}>{i + 1}</span>
                 </div>
+                <span className="journey-age" style={{ color: f.color }}>Why Choose Us</span>
+                <h3 className="journey-title">{f.title}</h3>
+                <p className="journey-desc">{f.body}</p>
               </div>
             ))}
           </div>

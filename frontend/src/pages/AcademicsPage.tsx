@@ -47,40 +47,50 @@ function truncateToSentences(text: string, count: number): string {
   return sentences.slice(0, count).join(". ") + "...";
 }
 
+const DIVISION_COLORS = ["#0B1F5C", "#B22222", "#00B4D8"];
+const DIVISION_ICONS = [
+  <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>,
+  <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>,
+  <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347M12 13.489a50.702 50.702 0 017.74-3.342M12 13.489a50.702 50.702 0 00-7.74-3.342M12 13.489V21.75" /></svg>,
+];
+
 function DivisionCard({ d, index }: { d: Division; index: number }) {
   const [expanded, setExpanded] = useState(false);
   const preview = truncateToSentences(d.body, 2);
   const needsToggle = d.body.split(". ").filter(Boolean).length > 2;
+  const color = DIVISION_COLORS[index % DIVISION_COLORS.length];
 
   return (
     <AnimateIn key={d.id} delay={(index + 1) as 1 | 2 | 3} from={index === 0 ? "left" : index === 2 ? "right" : "up"}>
-      <div className="card division-card">
-        <div className="division-card-accent" />
-        <div className="division-card-inner">
-          <div className="division-card-label"><span className="division-card-label-line" />{d.age_range}</div>
-          <h3>{d.title}</h3>
-          <div
-            className="division-body"
-            style={{
-              maxHeight: expanded ? "none" : "120px",
-              overflow: "hidden",
-              transition: "max-height 0.4s ease",
-            }}
-          >
-            {expanded
-              ? d.body.split("\n\n").map((para, i) => <p key={i} style={{ marginBottom: i < d.body.split("\n\n").length - 1 ? 14 : 0 }}>{para}</p>)
-              : <p>{preview}</p>
-            }
-          </div>
-          {needsToggle && (
-            <button
-              onClick={() => setExpanded(e => !e)}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--gold)", fontWeight: 700, fontSize: 13, padding: "8px 0 0", textDecoration: "underline", display: "block" }}
-            >
-              {expanded ? "Read less" : "Read more"}
-            </button>
-          )}
+      <div className="journey-card">
+        <div className="journey-connector" style={{ background: color }} />
+        <div className="journey-icon-wrap" style={{ background: color + "18", color }}>
+          {DIVISION_ICONS[index % DIVISION_ICONS.length]}
+          <span className="journey-step-num" style={{ color }}>{index + 1}</span>
         </div>
+        <span className="journey-age" style={{ color }}>{d.age_range}</span>
+        <h3 className="journey-title">{d.title}</h3>
+        <div
+          className="journey-desc division-body"
+          style={{
+            maxHeight: expanded ? "none" : "120px",
+            overflow: "hidden",
+            transition: "max-height 0.4s ease",
+          }}
+        >
+          {expanded
+            ? d.body.split("\n\n").map((para, i) => <p key={i} style={{ marginBottom: i < d.body.split("\n\n").length - 1 ? 14 : 0 }}>{para}</p>)
+            : <p>{preview}</p>
+          }
+        </div>
+        {needsToggle && (
+          <button
+            onClick={() => setExpanded(e => !e)}
+            style={{ background: "none", border: "none", cursor: "pointer", color, fontWeight: 700, fontSize: 13, padding: "8px 0 0", textDecoration: "underline", display: "block" }}
+          >
+            {expanded ? "Read less" : "Read more"}
+          </button>
+        )}
       </div>
     </AnimateIn>
   );
@@ -154,7 +164,7 @@ export default function AcademicsPage() {
             <p>The school runs from Early Years through Secondary. Each division has its own pace, but the same standards.</p>
             <div className="section-bar" />
           </AnimateIn>
-          <div className="divisions-grid">
+          <div className="journey-grid">
             {display.map((d, i) => <DivisionCard key={d.id} d={d} index={i} />)}
           </div>
         </div>

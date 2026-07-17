@@ -18,23 +18,29 @@ const DEFAULT_TEAM: TeamMember[] = [
   { img: "https://res.cloudinary.com/dagt2a1w0/image/upload/v1781414016/12_Juvert_Essien_Procurement_Officer_qct6wq.jpg", name: "Juvert Essien", role: "Procurement Officer", dept: "Administration" },
 ];
 
+const DEPT_COLORS: Record<string, string> = {
+  Leadership: "#0B1F5C",
+  Administration: "#B22222",
+  Academic: "#00B4D8",
+};
+const DEFAULT_DEPT_COLOR = "#7c3aed";
+
 function TeamCard({ member, index }: { member: TeamMember; index: number }) {
   const [err, setErr] = useState(false);
   const initials = member.name.split(" ").map(w => w[0]).join("").slice(0, 2);
+  const color = (member.dept && DEPT_COLORS[member.dept]) || DEFAULT_DEPT_COLOR;
   return (
-    <AnimateIn delay={((index % 4) + 1) as 1 | 2 | 3} className="staff-card">
-      <div className="staff-card-img-wrap">
+    <AnimateIn delay={((index % 4) + 1) as 1 | 2 | 3} className="journey-card journey-card--team">
+      <div className="journey-connector" style={{ background: color }} />
+      <div className="journey-photo-wrap">
         {!err
-          ? <img src={member.img} alt={member.name} className="staff-card-img" onError={() => setErr(true)} />
-          : <div className="staff-card-fallback">{initials}</div>
+          ? <img src={member.img} alt={member.name} className="journey-photo" onError={() => setErr(true)} />
+          : <div className="journey-photo-fallback" style={{ background: color + "18", color }}>{initials}</div>
         }
-        <div className="staff-card-overlay" />
       </div>
-      <div className="staff-card-body">
-        <div className="staff-card-name">{member.name}</div>
-        <div className="staff-card-role">{member.role}</div>
-        <div className="staff-card-bar" />
-      </div>
+      {member.dept && <span className="journey-age" style={{ color }}>{member.dept}</span>}
+      <h3 className="journey-title" style={{ fontSize: 19 }}>{member.name}</h3>
+      <p className="journey-desc" style={{ marginBottom: 0 }}>{member.role}</p>
     </AnimateIn>
   );
 }
@@ -71,7 +77,7 @@ export default function TeamPage() {
       </section>
       <section className="staff-section">
         <div className="pis-container">
-          <div className="staff-grid">
+          <div className="journey-grid staff-grid">
             {team.map((m, i) => <TeamCard key={m.name + i} member={m} index={i} />)}
           </div>
         </div>

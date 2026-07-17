@@ -35,6 +35,19 @@ function useToken() {
 }
 export function authH(token: string) { return { "Content-Type": "application/json", Authorization: `Bearer ${token}` }; }
 
+// Decodes the JWT payload client-side (no signature check) purely to read
+// username/role for UI gating -- e.g. showing the Accounts card only to an
+// owner. The server independently re-verifies and enforces role on every
+// request that matters; this never substitutes for that.
+function decodeJwtPayload(token: string): { sub?: string; role?: "owner" | "admin" } | null {
+  try {
+    const part = token.split(".")[1];
+    if (!part) return null;
+    const json = atob(part.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json);
+  } catch { return null; }
+}
+
 // --- Toast system (fixed bottom-right, always visible regardless of scroll) ---
 interface Toast { id: number; text: string; ok: boolean; }
 let _toastId = 0;
@@ -195,12 +208,19 @@ function LoginLogo() {
 
 // --- Login Page ---
 function LoginPage({ onLogin }: { onLogin: (t: string, remember?: boolean) => void }) {
+  const [username, setUsername] = useState("");
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const [remember, setRemember] = useState(true);
-  const [forgotStage, setForgotStage] = useState<"idle" | "confirm" | "sending" | "sent">("idle");
+  // idle -> sign-in form. forgot-username -> ask which account. forgot-sent ->
+  // code emailed, waiting for code + new password. forgot-done -> success.
+  const [forgotStage, setForgotStage] = useState<"idle" | "forgot-username" | "forgot-sending" | "forgot-sent" | "forgot-resetting" | "forgot-done">("idle");
+  const [forgotUsername, setForgotUsername] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmNewPw, setConfirmNewPw] = useState("");
   const [forgotErr, setForgotErr] = useState("");
   const [cooldown, setCooldown] = useState(0);
 
@@ -213,29 +233,47 @@ function LoginPage({ onLogin }: { onLogin: (t: string, remember?: boolean) => vo
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setErr("");
     try {
-      const r = await fetch(`${API}/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw }) });
-      if (!r.ok) { setErr("Incorrect password. Please try again."); return; }
+      const r = await fetch(`${API}/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password: pw }) });
+      if (!r.ok) { setErr("Incorrect username or password. Please try again."); return; }
       const { token } = await r.json(); onLogin(token, remember);
     } catch { setErr("Cannot connect to server. Check your connection."); }
     finally { setLoading(false); }
   };
 
-  const sendRecoveryEmail = async () => {
-    setForgotStage("sending"); setForgotErr("");
+  const requestResetCode = async () => {
+    setForgotStage("forgot-sending"); setForgotErr("");
     try {
-      const r = await fetch(`${API}/forgot-password`, { method: "POST" });
+      const r = await fetch(`${API}/forgot-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: forgotUsername }) });
       if (r.status === 429) {
         const d = await r.json().catch(() => ({}));
         setForgotErr(d.error || "Please wait before trying again.");
-        setForgotStage("confirm");
+        setForgotStage("forgot-username");
         return;
       }
-      if (!r.ok) { setForgotErr("Couldn't send the email. Try again shortly."); setForgotStage("confirm"); return; }
-      setForgotStage("sent");
+      if (!r.ok) { setForgotErr("Couldn't send the email. Try again shortly."); setForgotStage("forgot-username"); return; }
+      setForgotStage("forgot-sent");
       setCooldown(60);
     } catch {
-      setForgotErr("Cannot connect to server."); setForgotStage("confirm");
+      setForgotErr("Cannot connect to server."); setForgotStage("forgot-username");
     }
+  };
+
+  const submitReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPw !== confirmNewPw) { setForgotErr("Passwords don't match"); return; }
+    if (newPw.length < 8) { setForgotErr("Password must be at least 8 characters"); return; }
+    setForgotStage("forgot-resetting"); setForgotErr("");
+    try {
+      const r = await fetch(`${API}/reset-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: forgotUsername, code: resetCode, newPassword: newPw }) });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setForgotErr(d.error || "Invalid or expired code"); setForgotStage("forgot-sent"); return; }
+      setForgotStage("forgot-done");
+    } catch {
+      setForgotErr("Cannot connect to server."); setForgotStage("forgot-sent");
+    }
+  };
+
+  const backToSignIn = () => {
+    setForgotStage("idle"); setForgotUsername(""); setResetCode(""); setNewPw(""); setConfirmNewPw(""); setForgotErr("");
   };
 
   return (
@@ -247,6 +285,14 @@ function LoginPage({ onLogin }: { onLogin: (t: string, remember?: boolean) => vo
 
         {forgotStage === "idle" && (
           <form onSubmit={submit} className="pis-wl-form">
+            <div className={`pis-wl-field${focused === true ? " pis-wl-field--active" : ""}`}>
+              <label htmlFor="pis-un">Username</label>
+              <input
+                id="pis-un" type="text" value={username} autoComplete="username"
+                onChange={e => setUsername(e.target.value)}
+                required
+              />
+            </div>
             <div className={`pis-wl-field${focused ? " pis-wl-field--active" : ""}`}>
               <label htmlFor="pis-pw">Password</label>
               <input
@@ -266,7 +312,7 @@ function LoginPage({ onLogin }: { onLogin: (t: string, remember?: boolean) => vo
               </label>
               <button
                 type="button" className="pis-wl-forgot"
-                onClick={() => { setForgotStage("confirm"); setForgotErr(""); }}
+                onClick={() => { setForgotStage("forgot-username"); setForgotUsername(username); setForgotErr(""); }}
               >
                 Forgot password?
               </button>
@@ -279,32 +325,58 @@ function LoginPage({ onLogin }: { onLogin: (t: string, remember?: boolean) => vo
           </form>
         )}
 
-        {(forgotStage === "confirm" || forgotStage === "sending") && (
+        {forgotStage === "forgot-username" && (
           <div className="pis-wl-forgot-panel">
             <p className="pis-wl-forgot-copy">
-              Send the current admin password to <strong>pis.abuja@gmail.com</strong>?
+              Enter your admin username. If it has an account, we'll email a one-time reset code to the school's admin inbox.
             </p>
+            <div className="pis-wl-field" style={{ marginBottom: 12 }}>
+              <label htmlFor="pis-forgot-un">Username</label>
+              <input id="pis-forgot-un" type="text" value={forgotUsername} onChange={e => setForgotUsername(e.target.value)} autoFocus />
+            </div>
             {forgotErr && <div className="pis-wl-error"><AlertCircle size={15} /> {forgotErr}</div>}
             <div className="pis-wl-forgot-actions">
-              <button type="button" className="pis-wl-btn-secondary" onClick={() => setForgotStage("idle")} disabled={forgotStage === "sending"}>
-                Cancel
-              </button>
-              <button type="button" className="pis-wl-btn" onClick={sendRecoveryEmail} disabled={forgotStage === "sending"}>
-                {forgotStage === "sending" && <RefreshCw size={16} className="pis-spin" />}
-                <span>{forgotStage === "sending" ? "Sending" : "Send Password"}</span>
+              <button type="button" className="pis-wl-btn-secondary" onClick={backToSignIn}>Cancel</button>
+              <button type="button" className="pis-wl-btn" onClick={requestResetCode} disabled={!forgotUsername}>
+                Send Reset Code
               </button>
             </div>
           </div>
         )}
 
-        {forgotStage === "sent" && (
+        {forgotStage === "forgot-sending" && (
+          <div className="pis-wl-forgot-panel">
+            <p className="pis-wl-forgot-copy"><RefreshCw size={16} className="pis-spin" /> Sending reset code…</p>
+          </div>
+        )}
+
+        {(forgotStage === "forgot-sent" || forgotStage === "forgot-resetting") && (
+          <form onSubmit={submitReset} className="pis-wl-forgot-panel">
+            <p className="pis-wl-forgot-copy">
+              If <strong>{forgotUsername}</strong> has an account, a 6-digit code was emailed to the school's admin inbox. It expires in 15 minutes.
+            </p>
+            <Field label="Reset Code"><input className="pis-input" value={resetCode} onChange={e => setResetCode(e.target.value)} required maxLength={6} /></Field>
+            <Field label="New Password" hint="minimum 8 characters"><input className="pis-input" type="password" value={newPw} onChange={e => setNewPw(e.target.value)} required /></Field>
+            <Field label="Confirm New Password"><input className="pis-input" type="password" value={confirmNewPw} onChange={e => setConfirmNewPw(e.target.value)} required /></Field>
+            {forgotErr && <div className="pis-wl-error"><AlertCircle size={15} /> {forgotErr}</div>}
+            <div className="pis-wl-forgot-actions">
+              <button type="button" className="pis-wl-btn-secondary" onClick={backToSignIn} disabled={forgotStage === "forgot-resetting"}>Cancel</button>
+              <button type="submit" className="pis-wl-btn" disabled={forgotStage === "forgot-resetting"}>
+                {forgotStage === "forgot-resetting" && <RefreshCw size={16} className="pis-spin" />}
+                <span>{forgotStage === "forgot-resetting" ? "Resetting" : "Reset Password"}</span>
+              </button>
+            </div>
+          </form>
+        )}
+
+        {forgotStage === "forgot-done" && (
           <div className="pis-wl-forgot-panel">
             <p className="pis-wl-forgot-copy">
-              Password sent to <strong>pis.abuja@gmail.com</strong>. Check the inbox.
+              Password reset. Sign in with your new password.
             </p>
             <button
               type="button" className="pis-wl-btn-secondary" style={{ width: "100%" }}
-              onClick={() => setForgotStage("idle")}
+              onClick={backToSignIn}
             >
               Back to Sign In
             </button>
@@ -2036,19 +2108,112 @@ function SubmissionsTab({ token }: { token: string }) {
 }
 
 // --- Settings ---
+function AdminAccountsCard({ token, currentUsername }: { token: string; currentUsername?: string }) {
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState<"admin" | "owner">("admin");
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const r = await fetch(`${API}/accounts`, { headers: authH(token) });
+    if (r.ok) setAccounts(await r.json());
+    setLoading(false);
+  }, [token]);
+  useEffect(() => { load(); }, [load]);
+
+  const createAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 8) { flash("Password must be at least 8 characters", false); return; }
+    setSaving(true);
+    const r = await fetch(`${API}/accounts`, { method: "POST", headers: authH(token), body: JSON.stringify({ username: newUsername, password: newPassword, role: newRole }) });
+    setSaving(false);
+    if (r.ok) { flash("Account created"); setNewUsername(""); setNewPassword(""); setNewRole("admin"); setCreating(false); load(); }
+    else { const d = await r.json().catch(() => ({})); flash(d.error || "Failed to create account", false); }
+  };
+
+  const toggleActive = async (acc: any) => {
+    const r = await fetch(`${API}/accounts/${acc.id}`, { method: "PATCH", headers: authH(token), body: JSON.stringify({ active: !acc.active }) });
+    if (r.ok) load(); else { const d = await r.json().catch(() => ({})); flash(d.error || "Failed to update account", false); }
+  };
+
+  const removeAccount = async (acc: any) => {
+    if (!window.confirm(`Remove admin account "${acc.username}"? This can't be undone.`)) return;
+    const r = await fetch(`${API}/accounts/${acc.id}`, { method: "DELETE", headers: authH(token) });
+    if (r.ok || r.status === 204) { flash("Account removed"); load(); }
+    else { const d = await r.json().catch(() => ({})); flash(d.error || "Failed to remove account", false); }
+  };
+
+  return (
+    <div className="pis-card">
+      <div className="pis-card-title">Admin Accounts</div>
+      <p style={{ fontSize: 13, color: "var(--pis-muted)", marginTop: -6, marginBottom: 14 }}>
+        Each person who needs dashboard access should have their own named account, not a shared password.
+      </p>
+      {loading ? <div style={{ fontSize: 13, color: "var(--pis-muted)" }}>Loading…</div> : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+          {accounts.map(acc => (
+            <div key={acc.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 10, background: "var(--pis-hover, #f4f6fa)", gap: 10, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>
+                  {acc.username} {acc.username === currentUsername && <span style={{ fontWeight: 400, fontSize: 12, color: "var(--pis-muted)" }}>(you)</span>}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--pis-muted)" }}>
+                  {acc.role === "owner" ? "Owner" : "Admin"} · {acc.active ? "Active" : "Disabled"} · {acc.last_login_at ? `last signed in ${timeAgo(acc.last_login_at)}` : "never signed in"}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button type="button" className="pis-btn-ghost" style={{ padding: "6px 12px", fontSize: 12.5 }} onClick={() => toggleActive(acc)}>
+                  {acc.active ? "Disable" : "Enable"}
+                </button>
+                {acc.username !== currentUsername && (
+                  <button type="button" className="pis-btn-ghost" style={{ padding: "6px 12px", fontSize: 12.5, color: "#B22222" }} onClick={() => removeAccount(acc)}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!creating ? (
+        <button type="button" className="pis-btn-primary" onClick={() => setCreating(true)}><Plus size={15} /> New Account</button>
+      ) : (
+        <form onSubmit={createAccount} style={{ maxWidth: 380 }}>
+          <Field label="Username"><input className="pis-input" value={newUsername} onChange={e => setNewUsername(e.target.value)} required autoFocus /></Field>
+          <Field label="Password" hint="minimum 8 characters"><input className="pis-input" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required /></Field>
+          <Field label="Role"><select className="pis-input" value={newRole} onChange={e => setNewRole(e.target.value as "admin" | "owner")}><option value="admin">Admin — can manage content</option><option value="owner">Owner — can also manage accounts</option></select></Field>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button type="button" className="pis-btn-ghost" onClick={() => setCreating(false)}>Cancel</button>
+            <button type="submit" className={`pis-btn-primary${saving ? " pis-btn--saving" : ""}`} disabled={saving}>
+              {saving ? <><RefreshCw size={15} className="pis-spin" /> Creating…</> : <><Save size={15} /> Create Account</>}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
 function SettingsTab({ token, onPasswordChanged, dark, toggleDark }: { token: string; onPasswordChanged: () => void; dark: boolean; toggleDark: () => void }) {
+  const payload = decodeJwtPayload(token);
+  const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [saving, setSaving] = useState(false);
   const changePw = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPw !== confirmPw) { flash("Passwords don't match", false); return; }
-    if (newPw.length < 6) { flash("Password must be at least 6 characters", false); return; }
+    if (newPw.length < 8) { flash("Password must be at least 8 characters", false); return; }
     setSaving(true);
-    const r = await fetch(`${API}/change-password`, { method: "POST", headers: authH(token), body: JSON.stringify({ newPassword: newPw }) });
+    const r = await fetch(`${API}/change-password`, { method: "POST", headers: authH(token), body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }) });
     setSaving(false);
-    if (r.ok) { flash("Password changed — signing you out…"); setNewPw(""); setConfirmPw(""); setTimeout(onPasswordChanged, 2000); }
-    else flash("Failed to change password", false);
+    if (r.ok) { flash("Password changed — signing you out…"); setCurrentPw(""); setNewPw(""); setConfirmPw(""); setTimeout(onPasswordChanged, 2000); }
+    else { const d = await r.json().catch(() => ({})); flash(d.error || "Failed to change password", false); }
   };
   return (
     <div className="pis-content">
@@ -2068,15 +2233,18 @@ function SettingsTab({ token, onPasswordChanged, dark, toggleDark }: { token: st
       </div>
 
       <div className="pis-card" style={{ maxWidth: 480 }}>
-        <div className="pis-card-title">Change Admin Password</div>
+        <div className="pis-card-title">Change Your Password</div>
         <form onSubmit={changePw}>
-          <Field label="New Password" hint="minimum 6 characters"><input className="pis-input" type="password" value={newPw} onChange={e => setNewPw(e.target.value)} required /></Field>
+          <Field label="Current Password"><input className="pis-input" type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} required /></Field>
+          <Field label="New Password" hint="minimum 8 characters"><input className="pis-input" type="password" value={newPw} onChange={e => setNewPw(e.target.value)} required /></Field>
           <Field label="Confirm New Password"><input className="pis-input" type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} required /></Field>
           <button type="submit" className={`pis-btn-primary${saving ? " pis-btn--saving" : ""}`} disabled={saving} style={{ marginTop: 8 }}>
             {saving ? <><RefreshCw size={15} className="pis-spin" /> Saving…</> : <><Save size={15} /> Change Password</>}
           </button>
         </form>
       </div>
+
+      {payload?.role === "owner" && <AdminAccountsCard token={token} currentUsername={payload?.sub} />}
 
       <div className="pis-card" style={{ maxWidth: 480 }}>
         <div className="pis-card-title">About This Dashboard</div>
@@ -2243,7 +2411,7 @@ export default function AdminPage() {
               {tab === "admissions"        && <AdmissionsTab        token={token} />}
               {tab === "submissions"       && <SubmissionsTab       token={token} />}
               {tab === "trash"             && <TrashTab             token={token} />}
-              {tab === "share"             && <ShareTab />}
+              {tab === "share"             && <ShareTab             token={token} />}
               {tab === "settings"          && <SettingsTab          token={token} onPasswordChanged={handleLogout} dark={dark} toggleDark={toggleDark} />}
             </motion.div>
           </AnimatePresence>

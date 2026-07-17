@@ -7,6 +7,9 @@ import router from "./routes/index.js";
 
 const app = express();
 
+// Trust Render's proxy so req.ip / audit logs record the real caller IP.
+app.set("trust proxy", 1);
+
 // Security: Helmet middleware for HTTP headers
 app.use(helmet({
   contentSecurityPolicy: {

@@ -1,6 +1,7 @@
 import { createClient, type Client } from "@libsql/client";
 import path from "path";
 import { fileURLToPath } from "url";
+import bcrypt from "bcryptjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -322,6 +323,34 @@ const CREATE_TABLES_SQL = `
     read INTEGER NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS admin_users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role          TEXT NOT NULL DEFAULT 'admin',
+    active        INTEGER NOT NULL DEFAULT 1,
+    created_at    TEXT DEFAULT (datetime('now')),
+    last_login_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS audit_logs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    username   TEXT,
+    action     TEXT NOT NULL,
+    detail     TEXT,
+    ip_address TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS password_resets (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    username   TEXT NOT NULL,
+    token_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used       INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `;
 
 // --- Soft delete (Trash / Recently Deleted) ---------------------------
@@ -375,6 +404,45 @@ await migrateCol("staff_members", "published", "INTEGER NOT NULL DEFAULT 1");
   }
 
   await seed();
+  await seedAdminAccount();
+}
+
+// --- Admin accounts migration ------------------------------------------
+// The dashboard used to run on a single shared plaintext password. On first
+// boot after this upgrade, if no real admin_users rows exist yet, we migrate
+// whatever the old effective password was (site_settings.admin_password_hash,
+// falling back to the ADMIN_PASSWORD env var) into a proper bcrypt-hashed
+// "owner" account named "admin" -- so nobody is locked out on deploy, but the
+// password is never stored in the clear again from this point forward.
+async function seedAdminAccount() {
+  const existing = await db.prepare("SELECT 1 FROM admin_users LIMIT 1").get();
+  if (existing) return;
+
+  const legacyRow: any = await db.prepare("SELECT value FROM site_settings WHERE key = 'admin_password_hash'").get();
+  const legacyPassword = legacyRow?.value ?? process.env.ADMIN_PASSWORD;
+
+  if (!legacyPassword) {
+    console.warn("[db] No admin accounts exist yet and no legacy ADMIN_PASSWORD was found to migrate. " +
+      "Set ADMIN_PASSWORD once so the first owner account can be created, then remove it.");
+    return;
+  }
+
+  const hash = await bcrypt.hash(legacyPassword, 12);
+  await db.prepare(
+    "INSERT INTO admin_users (username, password_hash, role, active) VALUES ('admin', ?, 'owner', 1)"
+  ).run(hash);
+  console.log("[db] Migrated legacy shared password into a hashed 'admin' owner account. " +
+    "Sign in with username 'admin' and the previous password, then create named accounts for each staff member.");
+}
+
+// --- Audit logging -------------------------------------------------------
+// Real, queryable log of admin activity -- who did what, from what IP, when.
+// This backs the Share & Protect "Security Audit Log" panel; nothing there
+// is hardcoded or fabricated.
+export async function logAudit(username: string | null, action: string, detail: string | null, ip: string | null) {
+  await db.prepare(
+    "INSERT INTO audit_logs (username, action, detail, ip_address) VALUES (?,?,?,?)"
+  ).run(username, action, detail ?? null, ip ?? null);
 }
 
 // --- Drag-to-reorder (Round 4) ------------------------------------------

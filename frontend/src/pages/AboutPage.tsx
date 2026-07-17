@@ -8,6 +8,7 @@ interface Goal { id: number; body: string; display_order: number; }
 const BOLT = <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>;
 const EYE  = <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
 const TARGET = <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>;
+const GOAL_COLORS = ["#0B1F5C", "#B22222", "#00B4D8", "#D4AF37", "#7c3aed", "#16a34a"];
 
 const DEFAULT_GOALS: Goal[] = [
   { id: 1, body: "To challenge and support learners to provide them with skill for a successful future", display_order: 1 },
@@ -86,29 +87,29 @@ export default function AboutPage() {
             <h2>Mission &amp; Vision</h2>
             <div className="section-bar" />
           </AnimateIn>
-          <div className="mv-grid">
+          <div className="journey-grid mv-journey-grid">
             <AnimateIn delay={1} from="left">
-              <div className="mv-card is-mission">
-                <div className="mv-card-accent" />
-                <div className="mv-card-body">
-                  <div className="mv-card-inner">
-                    <div className="mv-label"><span className="mv-label-line" />Our Mission</div>
-                    <h3>Shaping Minds,<br />Building Futures</h3>
-                    <p>{about?.mission || "To provide a stimulating, inclusive, and high-quality learning environment where every student achieves their full potential — academically, morally, and socially — and is equipped to make a positive impact on their generation."}</p>
-                  </div>
+              <div className="journey-card">
+                <div className="journey-connector" style={{ background: "#0B1F5C" }} />
+                <div className="journey-icon-wrap" style={{ background: "#0B1F5C18", color: "#0B1F5C" }}>
+                  {BOLT}
+                  <span className="journey-step-num" style={{ color: "#0B1F5C" }}>1</span>
                 </div>
+                <span className="journey-age" style={{ color: "#0B1F5C" }}>Our Mission</span>
+                <h3 className="journey-title">Shaping Minds, Building Futures</h3>
+                <p className="journey-desc">{about?.mission || "To provide a stimulating, inclusive, and high-quality learning environment where every student achieves their full potential — academically, morally, and socially — and is equipped to make a positive impact on their generation."}</p>
               </div>
             </AnimateIn>
             <AnimateIn delay={2} from="right">
-              <div className="mv-card is-vision">
-                <div className="mv-card-accent" />
-                <div className="mv-card-body">
-                  <div className="mv-card-inner">
-                    <div className="mv-label"><span className="mv-label-line" />Our Vision</div>
-                    <h3>A School the World<br />Will Recognise</h3>
-                    <p>{about?.vision || "To be the most trusted international school in Nigeria — recognised for academic rigour, innovative teaching, and the holistic development of well-rounded, globally-minded young people who lead with integrity."}</p>
-                  </div>
+              <div className="journey-card">
+                <div className="journey-connector" style={{ background: "#B22222" }} />
+                <div className="journey-icon-wrap" style={{ background: "#B2222218", color: "#B22222" }}>
+                  {EYE}
+                  <span className="journey-step-num" style={{ color: "#B22222" }}>2</span>
                 </div>
+                <span className="journey-age" style={{ color: "#B22222" }}>Our Vision</span>
+                <h3 className="journey-title">A School the World Will Recognise</h3>
+                <p className="journey-desc">{about?.vision || "To be the most trusted international school in Nigeria — recognised for academic rigour, innovative teaching, and the holistic development of well-rounded, globally-minded young people who lead with integrity."}</p>
               </div>
             </AnimateIn>
           </div>
@@ -121,13 +122,20 @@ export default function AboutPage() {
             <div className="goals-section-label">Our Goals</div>
             <h2 style={{ fontSize: 36, maxWidth: 480 }}>What we set out to do, every single day</h2>
           </AnimateIn>
-          <div className="goals-grid">
-            {displayGoals.map((goal, i) => (
-              <AnimateIn key={goal.id} delay={((i % 3) + 1) as 1 | 2 | 3} className="goal-card">
-                <span className="goal-number">0{i + 1}</span>
-                <p>{goal.body}</p>
-              </AnimateIn>
-            ))}
+          <div className="journey-grid">
+            {displayGoals.map((goal, i) => {
+              const color = GOAL_COLORS[i % GOAL_COLORS.length];
+              return (
+                <AnimateIn key={goal.id} delay={((i % 3) + 1) as 1 | 2 | 3} className="journey-card journey-card--compact">
+                  <div className="journey-connector" style={{ background: color }} />
+                  <div className="journey-icon-wrap" style={{ background: color + "18", color, width: 56, height: 56, marginBottom: 18 }}>
+                    {TARGET}
+                    <span className="journey-step-num" style={{ color }}>0{i + 1}</span>
+                  </div>
+                  <p className="journey-desc" style={{ marginBottom: 0 }}>{goal.body}</p>
+                </AnimateIn>
+              );
+            })}
           </div>
         </div>
       </section>

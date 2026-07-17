@@ -2841,3 +2841,22 @@ body::after { content: ''; position: fixed; left: var(--mx,50vw); top: var(--my,
 @media (min-width: 2000px) {
   .journey-grid { gap: 60px; }
 }
+
+/* ── JOURNEY CARD VARIANTS (reused across Portals / Features / Mission & Vision / Goals / Divisions / Team) ── */
+.journey-card-btn {
+  display: inline-flex; align-items: center; gap: 8px; color: #fff; border: none;
+  padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: all .25s; margin-top: 4px;
+}
+.journey-card-btn:hover { opacity: .88; transform: translateY(-2px); }
+
+.journey-card--compact { padding-bottom: 32px; }
+
+.journey-photo-wrap {
+  width: 84px; height: 84px; border-radius: 20px; overflow: hidden;
+  margin-bottom: 20px; background: #eef1f9; position: relative;
+  box-shadow: 0 6px 18px rgba(0,0,0,.08);
+}
+.journey-photo { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; transition: transform .5s ease; }
+.journey-card:hover .journey-photo { transform: scale(1.06); }
+.journey-photo-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 800; }

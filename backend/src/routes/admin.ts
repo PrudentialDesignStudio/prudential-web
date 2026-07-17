@@ -1,45 +1,72 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
-import { requireAuth } from "../middlewares/auth.js";
-import db, { logVersion, TRASHABLE_TABLES, purgeExpiredTrash, TRASH_RETENTION_DAYS, reorderTable } from "../lib/db.js";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
+import { requireAuth, requireOwner, getClientIp } from "../middlewares/auth.js";
+import db, { logVersion, logAudit, TRASHABLE_TABLES, purgeExpiredTrash, TRASH_RETENTION_DAYS, reorderTable } from "../lib/db.js";
 
 const router = Router();
 
-// Auth
-// The effective admin password is whatever was last saved via /change-password
-// (persisted in site_settings, so it survives restarts/redeploys); if nothing's
-// been saved yet, it falls back to the ADMIN_PASSWORD env var from Render.
-async function getEffectivePassword(): Promise<string | undefined> {
-  const row: any = await db.prepare("SELECT value FROM site_settings WHERE key = 'admin_password_hash'").get();
-  return row?.value ?? process.env.ADMIN_PASSWORD;
-}
+// --- Auth -----------------------------------------------------------------
+// Real per-admin accounts, bcrypt-hashed. The old single shared plaintext
+// password is gone; on first boot after this upgrade, db.ts migrates it into
+// one hashed "owner" account automatically so nobody is locked out.
 
 router.post("/login", async (req, res) => {
-  const { password } = req.body as { password?: string };
+  const { username, password } = req.body as { username?: string; password?: string };
   const jwtSecret = process.env.ADMIN_JWT_SECRET;
   if (!jwtSecret) { res.status(500).json({ error: "Server misconfigured" }); return; }
-  const adminPassword = await getEffectivePassword();
-  if (!adminPassword) { res.status(500).json({ error: "Server misconfigured" }); return; }
-  if (!password || password !== adminPassword) { res.status(401).json({ error: "Incorrect password" }); return; }
-  const token = jwt.sign({ role: "admin" }, jwtSecret, { expiresIn: "8h" });
-  res.json({ token });
+  if (!username || !password) { res.status(400).json({ error: "Username and password are required" }); return; }
+
+  const ip = getClientIp(req);
+  const user: any = await db.prepare("SELECT * FROM admin_users WHERE username = ? AND active = 1").get(username);
+  const ok = user && (await bcrypt.compare(password, user.password_hash));
+
+  if (!ok) {
+    // Log the attempt (never the password) so repeated failures against a
+    // username are actually visible in the audit trail, not just silently rate-limited.
+    await logAudit(username || null, "login_failed", null, ip).catch(() => {});
+    res.status(401).json({ error: "Incorrect username or password" });
+    return;
+  }
+
+  await db.prepare("UPDATE admin_users SET last_login_at = datetime('now') WHERE id = ?").run(user.id);
+  await logAudit(user.username, "login", null, ip).catch(() => {});
+
+  const token = jwt.sign({ sub: user.username, role: user.role }, jwtSecret, { expiresIn: "8h" });
+  res.json({ token, username: user.username, role: user.role });
 });
 
+// Self-service password change -- requires the caller's *current* password,
+// not just a valid session token, so a hijacked-but-unexpired token alone
+// can't lock the real owner out of their own account.
 router.post("/change-password", requireAuth, async (req, res) => {
-  const { newPassword } = req.body as { newPassword?: string };
-  if (!newPassword || newPassword.length < 6) { res.status(400).json({ error: "Password must be at least 6 characters" }); return; }
-  await db.prepare("INSERT INTO site_settings (key,value) VALUES ('admin_password_hash',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(newPassword);
-  process.env.ADMIN_PASSWORD = newPassword;
+  const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
+  if (!newPassword || newPassword.length < 8) { res.status(400).json({ error: "New password must be at least 8 characters" }); return; }
+  if (!currentPassword) { res.status(400).json({ error: "Current password is required" }); return; }
+
+  const user: any = await db.prepare("SELECT * FROM admin_users WHERE username = ?").get(req.adminUser!.sub);
+  if (!user || !(await bcrypt.compare(currentPassword, user.password_hash))) {
+    res.status(401).json({ error: "Current password is incorrect" });
+    return;
+  }
+  const hash = await bcrypt.hash(newPassword, 12);
+  await db.prepare("UPDATE admin_users SET password_hash = ? WHERE id = ?").run(hash, user.id);
+  await logAudit(user.username, "password_changed", null, getClientIp(req)).catch(() => {});
   res.json({ ok: true });
 });
 
-// Forgot password — emails the current admin password to the school's admin inbox.
-// Uses the same Gmail transporter/env vars as the admissions notification email.
+// Forgot password — emails a short-lived, single-use reset code to the
+// school's admin inbox. Unlike the old flow, the actual password is never
+// sent anywhere; the code only lets you *set* a new one, and expires in 15
+// minutes.
 const FORGOT_PW_COOLDOWN_MS = 60_000;
 let lastForgotPwSentAt = 0;
+const RESET_CODE_TTL_MS = 15 * 60 * 1000;
 
-router.post("/forgot-password", async (_req, res) => {
+router.post("/forgot-password", async (req, res) => {
+  const { username } = req.body as { username?: string };
   const now = Date.now();
   const elapsed = now - lastForgotPwSentAt;
   if (lastForgotPwSentAt && elapsed < FORGOT_PW_COOLDOWN_MS) {
@@ -47,14 +74,26 @@ router.post("/forgot-password", async (_req, res) => {
     res.status(429).json({ error: `Please wait ${waitSec}s before requesting again` });
     return;
   }
+  lastForgotPwSentAt = now;
+
+  // Always respond the same way whether or not the username exists, so the
+  // endpoint can't be used to enumerate valid admin usernames.
+  const genericOk = () => res.json({ ok: true });
+
+  if (!username) { genericOk(); return; }
+  const user: any = await db.prepare("SELECT * FROM admin_users WHERE username = ? AND active = 1").get(username);
+  if (!user) { genericOk(); return; }
 
   const gmailUser = process.env.GMAIL_USER;
   const gmailPass = process.env.GMAIL_PASS;
   const recipient = process.env.ADMIN_RECOVERY_EMAIL || "pis.abuja@gmail.com";
   if (!gmailUser || !gmailPass) { res.status(500).json({ error: "Email is not configured on the server" }); return; }
 
-  const adminPassword = await getEffectivePassword();
-  if (!adminPassword) { res.status(500).json({ error: "Server misconfigured" }); return; }
+  const code = crypto.randomInt(100000, 999999).toString(); // 6-digit, easy to type from an email on a phone
+  const codeHash = await bcrypt.hash(code, 10);
+  const expiresAt = new Date(now + RESET_CODE_TTL_MS).toISOString();
+  await db.prepare("INSERT INTO password_resets (username, token_hash, expires_at) VALUES (?,?,?)").run(username, codeHash, expiresAt);
+  await logAudit(username, "password_reset_requested", null, getClientIp(req)).catch(() => {});
 
   try {
     const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: gmailUser, pass: gmailPass } });
@@ -62,15 +101,15 @@ router.post("/forgot-password", async (_req, res) => {
       <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;">
         <div style="background:#0B1F5C;padding:20px;text-align:center;">
           <h2 style="color:#FFD700;margin:0;">Prudential International School</h2>
-          <p style="color:#00AEEF;margin:4px 0 0;">Admin Password Recovery</p>
+          <p style="color:#00AEEF;margin:4px 0 0;">Admin Password Reset</p>
         </div>
         <div style="padding:24px;background:#f9fafc;">
-          <p style="color:#333;font-size:14px;">Someone requested the admin dashboard password from the login screen.</p>
+          <p style="color:#333;font-size:14px;">A password reset was requested for the admin account <strong>${username}</strong>.</p>
           <div style="background:#eef2ff;border-radius:8px;padding:16px;text-align:center;margin:16px 0;">
-            <span style="font-size:12px;color:#555;letter-spacing:1px;text-transform:uppercase;">Current Password</span>
-            <div style="font-size:22px;font-weight:800;color:#0B1F5C;margin-top:6px;letter-spacing:1px;">${adminPassword}</div>
+            <span style="font-size:12px;color:#555;letter-spacing:1px;text-transform:uppercase;">Reset Code</span>
+            <div style="font-size:28px;font-weight:800;color:#0B1F5C;margin-top:6px;letter-spacing:4px;">${code}</div>
           </div>
-          <p style="color:#888;font-size:12px;">If you didn't request this, someone else has access to the login page — consider changing the password once signed in.</p>
+          <p style="color:#888;font-size:12px;">Enter this code on the login screen to set a new password. It expires in 15 minutes and can only be used once. If you didn't request this, you can ignore this email — nothing changes until the code is used.</p>
         </div>
         <div style="background:#0B1F5C;padding:12px;text-align:center;">
           <p style="color:rgba(255,255,255,.6);font-size:11px;margin:0;">Prudential International School · Admin Dashboard</p>
@@ -79,17 +118,107 @@ router.post("/forgot-password", async (_req, res) => {
     await transporter.sendMail({
       from: `"PIS Admin Dashboard" <${gmailUser}>`,
       to: recipient,
-      subject: "Admin Dashboard Password Recovery",
+      subject: "Admin Dashboard Password Reset Code",
       html,
     });
-    lastForgotPwSentAt = now;
-    res.json({ ok: true });
+    genericOk();
   } catch (err) {
     res.status(500).json({ error: "Failed to send recovery email" });
   }
 });
 
+router.post("/reset-password", async (req, res) => {
+  const { username, code, newPassword } = req.body as { username?: string; code?: string; newPassword?: string };
+  if (!username || !code || !newPassword) { res.status(400).json({ error: "Username, code, and new password are required" }); return; }
+  if (newPassword.length < 8) { res.status(400).json({ error: "New password must be at least 8 characters" }); return; }
+
+  const reset: any = await db.prepare(
+    "SELECT * FROM password_resets WHERE username = ? AND used = 0 AND expires_at > datetime('now') ORDER BY id DESC LIMIT 1"
+  ).get(username);
+  if (!reset || !(await bcrypt.compare(code, reset.token_hash))) {
+    res.status(401).json({ error: "Invalid or expired code" });
+    return;
+  }
+  const user: any = await db.prepare("SELECT * FROM admin_users WHERE username = ? AND active = 1").get(username);
+  if (!user) { res.status(401).json({ error: "Invalid or expired code" }); return; }
+
+  const hash = await bcrypt.hash(newPassword, 12);
+  await db.prepare("UPDATE admin_users SET password_hash = ? WHERE id = ?").run(hash, user.id);
+  await db.prepare("UPDATE password_resets SET used = 1 WHERE id = ?").run(reset.id);
+  await logAudit(username, "password_reset_completed", null, getClientIp(req)).catch(() => {});
+  res.json({ ok: true });
+});
+
+// --- Admin accounts (owner only) ------------------------------------------
+router.get("/accounts", requireAuth, requireOwner, async (_req, res) => {
+  const rows = await db.prepare(
+    "SELECT id, username, role, active, created_at, last_login_at FROM admin_users ORDER BY created_at ASC"
+  ).all();
+  res.json(rows);
+});
+
+router.post("/accounts", requireAuth, requireOwner, async (req, res) => {
+  const { username, password, role } = req.body as { username?: string; password?: string; role?: "owner" | "admin" };
+  if (!username || !password) { res.status(400).json({ error: "Username and password are required" }); return; }
+  if (password.length < 8) { res.status(400).json({ error: "Password must be at least 8 characters" }); return; }
+  const exists = await db.prepare("SELECT 1 FROM admin_users WHERE username = ?").get(username);
+  if (exists) { res.status(409).json({ error: "That username is already taken" }); return; }
+  const hash = await bcrypt.hash(password, 12);
+  const result = await db.prepare(
+    "INSERT INTO admin_users (username, password_hash, role, active) VALUES (?,?,?,1) RETURNING id, username, role, active, created_at, last_login_at"
+  ).get(username, hash, role === "owner" ? "owner" : "admin");
+  await logAudit(req.adminUser!.sub, "account_created", `created ${username}`, getClientIp(req)).catch(() => {});
+  res.status(201).json(result);
+});
+
+router.patch("/accounts/:id", requireAuth, requireOwner, async (req, res) => {
+  const id = Number(req.params.id);
+  const { active, role } = req.body as { active?: boolean; role?: "owner" | "admin" };
+  const target: any = await db.prepare("SELECT * FROM admin_users WHERE id = ?").get(id);
+  if (!target) { res.status(404).json({ error: "Not found" }); return; }
+
+  // Never let the last active owner be deactivated or demoted -- that would
+  // permanently lock everyone out of account management.
+  if ((active === false || role === "admin") && target.role === "owner") {
+    const otherOwners: any = await db.prepare("SELECT COUNT(*) as c FROM admin_users WHERE role='owner' AND active=1 AND id != ?").get(id);
+    if (otherOwners.c === 0) { res.status(409).json({ error: "At least one active owner account must remain" }); return; }
+  }
+
+  await db.prepare("UPDATE admin_users SET active = COALESCE(?, active), role = COALESCE(?, role) WHERE id = ?")
+    .run(active === undefined ? null : (active ? 1 : 0), role ?? null, id);
+  await logAudit(req.adminUser!.sub, "account_updated", `updated ${target.username}`, getClientIp(req)).catch(() => {});
+  res.json({ ok: true });
+});
+
+router.delete("/accounts/:id", requireAuth, requireOwner, async (req, res) => {
+  const id = Number(req.params.id);
+  const target: any = await db.prepare("SELECT * FROM admin_users WHERE id = ?").get(id);
+  if (!target) { res.status(404).json({ error: "Not found" }); return; }
+  if (target.username === req.adminUser!.sub) { res.status(400).json({ error: "You can't delete your own account while signed in as it" }); return; }
+  if (target.role === "owner") {
+    const otherOwners: any = await db.prepare("SELECT COUNT(*) as c FROM admin_users WHERE role='owner' AND active=1 AND id != ?").get(id);
+    if (otherOwners.c === 0) { res.status(409).json({ error: "At least one active owner account must remain" }); return; }
+  }
+  await db.prepare("DELETE FROM admin_users WHERE id = ?").run(id);
+  await logAudit(req.adminUser!.sub, "account_deleted", `deleted ${target.username}`, getClientIp(req)).catch(() => {});
+  res.status(204).send();
+});
+
+// --- Audit logs (Share & Protect) ------------------------------------------
+// Real security-event log: logins, failed logins, password resets, account
+// changes, plus every mutating admin request (logged automatically by
+// requireAuth). No hardcoded rows, no fabricated stats -- this is what
+// actually happened, from the actual database.
+router.get("/audit-logs", requireAuth, async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const offset = Number(req.query.offset) || 0;
+  const rows = await db.prepare("SELECT * FROM audit_logs ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?").all(limit, offset);
+  const total: any = await db.prepare("SELECT COUNT(*) as c FROM audit_logs").get();
+  res.json({ rows, total: total.c });
+});
+
 // Version History
+
 router.get("/history", requireAuth, async (req, res) => {
   const { table, id } = req.query;
   let rows;
