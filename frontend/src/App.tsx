@@ -1,140 +1,187 @@
-import { useState, useEffect, lazy, Suspense } from "react";
-import { useSEO } from "@/hooks/useSEO";
-import Topbar from "@/components/Topbar";
-import Navbar from "@/components/Navbar";
-import NoticesBell from "@/components/NoticesBell";
-import Footer from "@/components/Footer";
-import ScrollProgress from "@/components/ScrollProgress";
-import HomePage from "@/pages/HomePage";
-import AboutPage from "@/pages/AboutPage";
-import AcademicsPage from "@/pages/AcademicsPage";
-import StudentLifePage from "@/pages/StudentLifePage";
-import GalleryPage from "@/pages/GalleryPage";
-import ContactPage from "@/pages/ContactPage";
-import TeamPage from "@/pages/TeamPage";
-import RulesPage from "@/pages/RulesPage";
-import PortalPage from "@/pages/PortalPage";
-import AnthemPage from "@/pages/AnthemPage";
-import ApplyPage from "@/pages/ApplyPage";
-
-const AdminPage = lazy(() => import("@/pages/AdminPage"));
-
-const SCHOOL_LOGO_URL = "https://res.cloudinary.com/dagt2a1w0/image/upload/v1773768204/ChatGPT_Image_Jan_31__2026__04_03_54_AM_1769828712771_d65sw2.png";
-
-function AdminBootFallback() {
-  return (
-    <div style={{ minHeight: "100vh", background: "#080f1e", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <img src={SCHOOL_LOGO_URL} alt="Prudential International School" style={{ width: 56, height: 56, objectFit: "contain", opacity: .9 }} />
-    </div>
-  );
-}
-
-export type Page = "home" | "about" | "academics" | "life" | "gallery" | "contact" | "team" | "rules" | "portal" | "anthem" | "apply";
-
-const PAGE_PATHS: Record<Page, string> = {
-  home: "/",
-  about: "/about",
-  academics: "/academics",
-  life: "/student-life",
-  gallery: "/gallery",
-  contact: "/contact",
-  team: "/meet-the-team",
-  rules: "/rules",
-  portal: "/portal",
-  anthem: "/anthem",
-  apply: "/apply",
-};
-
-const PATH_TO_PAGE: Record<string, Page> = {
-  "/": "home",
-  "/about": "about",
-  "/academics": "academics",
-  "/student-life": "life",
-  "/gallery": "gallery",
-  "/contact": "contact",
-  "/staff": "team",
-  "/meet-the-team": "team",
-  "/rules": "rules",
-  "/portal": "portal",
-  "/anthem": "anthem",
-  "/apply": "apply",
-};
-
-function getPageFromPath(): Page {
-  return PATH_TO_PAGE[window.location.pathname] ?? "home";
-}
-function isAdminRoute() {
-  return window.location.pathname === "/pis-admin";
-}
+// TEMPORARY ACCESS-RESTRICTED HOLDING PAGE
+// ------------------------------------------------------------------
+// This file temporarily replaces the live application while an
+// outstanding payment is being resolved.
+//
+// TO REVERT:
+// 1. Delete this file.
+// 2. Rename App.original.tsx.bak -> App.tsx.
+// 3. Redeploy.
+// ------------------------------------------------------------------
 
 export default function App() {
-  const [page, setPage] = useState<Page>(getPageFromPath);
-  const [isAdmin, setIsAdmin] = useState(isAdminRoute);
-  const [ready, setReady] = useState(false);
-
-  useSEO(page);
-
-  // Smooth, near-instant reveal — no artificial delay or full-screen splash.
-  // A single animation frame lets the page mount before the fade-in class
-  // is applied, so the transition is visible but never blocks the visitor.
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => setReady(true));
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  useEffect(() => {
-    const move = (e: MouseEvent) => {
-      document.documentElement.style.setProperty("--mx", `${e.clientX}px`);
-      document.documentElement.style.setProperty("--my", `${e.clientY}px`);
-    };
-    window.addEventListener("mousemove", move);
-    return () => window.removeEventListener("mousemove", move);
-  }, []);
-
-  useEffect(() => {
-    const check = () => {
-      setIsAdmin(isAdminRoute());
-      setPage(getPageFromPath());
-    };
-    window.addEventListener("popstate", check);
-    return () => window.removeEventListener("popstate", check);
-  }, []);
-
-  function navigate(p: Page) {
-    const path = PAGE_PATHS[p];
-    window.history.pushState({}, "", path);
-    setPage(p);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  if (isAdmin) {
-    return (
-      <Suspense fallback={<AdminBootFallback />}>
-        <AdminPage />
-      </Suspense>
-    );
-  }
-
   return (
-    <div className={`site-wrapper${ready ? " site-revealed" : ""}`}>
-      <ScrollProgress />
-      <Topbar />
-      <Navbar current={page} navigate={navigate} />
-      <main>
-        {page === "home"      && <HomePage navigate={navigate} />}
-        {page === "about"     && <AboutPage />}
-        {page === "academics" && <AcademicsPage />}
-        {page === "life"      && <StudentLifePage />}
-        {page === "gallery"   && <GalleryPage />}
-        {page === "contact"   && <ContactPage />}
-        {page === "team"      && <TeamPage />}
-        {page === "rules"     && <RulesPage />}
-        {page === "portal"    && <PortalPage />}
-        {page === "anthem"    && <AnthemPage />}
-        {page === "apply"     && <ApplyPage navigate={navigate} />}
-      </main>
-      <Footer navigate={navigate} />
-      <NoticesBell />
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "2rem",
+        background: "linear-gradient(135deg, #050816 0%, #0b1020 100%)",
+        fontFamily:
+          "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "760px",
+          background: "#111827",
+          border: "1px solid rgba(239,68,68,.3)",
+          borderRadius: "18px",
+          padding: "3rem",
+          color: "#F8FAFC",
+          boxShadow: "0 25px 80px rgba(0,0,0,.45)",
+        }}
+      >
+        <div
+          style={{
+            display: "inline-block",
+            padding: ".45rem .9rem",
+            borderRadius: "999px",
+            background: "rgba(239,68,68,.12)",
+            border: "1px solid rgba(239,68,68,.35)",
+            color: "#FCA5A5",
+            fontWeight: 700,
+            letterSpacing: ".08em",
+            fontSize: ".8rem",
+            textTransform: "uppercase",
+            marginBottom: "1.5rem",
+          }}
+        >
+          403 • ACCESS RESTRICTED
+        </div>
+
+        <h1
+          style={{
+            margin: 0,
+            fontSize: "2.3rem",
+            fontWeight: 800,
+            color: "#FFFFFF",
+          }}
+        >
+          Website Temporarily Disabled
+        </h1>
+
+        <p
+          style={{
+            marginTop: "1.75rem",
+            fontSize: "1.05rem",
+            lineHeight: 1.8,
+            color: "#CBD5E1",
+          }}
+        >
+          This website has been intentionally disabled by its developer due to
+          an outstanding contractual payment that remains unpaid.
+        </p>
+
+        <div
+          style={{
+            marginTop: "1.8rem",
+            padding: "1.25rem",
+            borderRadius: "12px",
+            border: "1px solid rgba(245,158,11,.35)",
+            background: "rgba(245,158,11,.08)",
+          }}
+        >
+          <div
+            style={{
+              color: "#FBBF24",
+              fontWeight: 800,
+              fontSize: "1.05rem",
+              marginBottom: ".6rem",
+            }}
+          >
+            PAYMENT STATUS
+          </div>
+
+          <div
+            style={{
+              color: "#FFFFFF",
+              fontWeight: 700,
+              fontSize: "1.1rem",
+            }}
+          >
+            PAYMENT FROM ELITE TECH IS STILL OUTSTANDING.
+          </div>
+        </div>
+
+        <p
+          style={{
+            marginTop: "2rem",
+            fontSize: "1rem",
+            lineHeight: 1.8,
+            color: "#CBD5E1",
+          }}
+        >
+          Public access has been suspended until the outstanding balance is
+          settled. Once payment has been received and confirmed, this website
+          will be restored to its normal operation immediately.
+        </p>
+
+        <div
+          style={{
+            marginTop: "2rem",
+            border: "1px solid #243046",
+            borderRadius: "12px",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              background: "#0F172A",
+              padding: "1rem 1.25rem",
+              fontWeight: 700,
+              color: "#FFFFFF",
+            }}
+          >
+            Current Status
+          </div>
+
+          <div
+            style={{
+              padding: "1.25rem",
+              color: "#CBD5E1",
+              lineHeight: 2,
+            }}
+          >
+            <div>
+              <strong>Status:</strong> Website Disabled
+            </div>
+
+            <div>
+              <strong>Reason:</strong> Outstanding Development Payment
+            </div>
+
+            <div>
+              <strong>Project:</strong> PIS Website 
+            </div>
+
+            <div>
+              <strong>Access:</strong> Suspended Until Payment Is Received
+            </div>
+
+            <div>
+              <strong>HTTP Response:</strong> 403 Forbidden 
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            marginTop: "2.5rem",
+            paddingTop: "1.5rem",
+            borderTop: "1px solid #243046",
+            color: "#94A3B8",
+            fontSize: ".95rem",
+            lineHeight: 1.8,
+          }}
+        >
+          This restriction is temporary and will be removed immediately after
+          the outstanding payment obligation has been fulfilled.
+        </div>
+      </div>
     </div>
   );
 }
