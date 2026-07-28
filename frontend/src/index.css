@@ -463,6 +463,10 @@ img { max-width: 100%; }
 .footer-bottom { border-top: 1px solid rgba(255,255,255,.07); padding: 22px 0; display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; }
 .footer-designed-by { font-size: 12px; color: rgba(255,255,255,.35); text-decoration: none; transition: color .2s; }
 .footer-designed-by:hover { color: rgba(255,255,255,.7); }
+.footer-powered-by { display: flex; align-items: center; gap: 7px; font-size: 12px; color: rgba(255,255,255,.35); text-decoration: none; transition: opacity .2s; }
+.footer-powered-by:hover { opacity: .8; }
+.footer-powered-by-logo { width: 16px; height: 16px; object-fit: contain; }
+.footer-powered-by-name { font-weight: 700; color: rgba(255,255,255,.55); }
 .footer-credit { color: rgba(255,255,255,.45); }
 .footer-credit a { color: rgba(255,255,255,.7); text-decoration: none; font-weight: 600; transition: color .2s; }
 .footer-credit a:hover { color: var(--gold); text-decoration: underline; }
