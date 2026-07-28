@@ -87,8 +87,11 @@ export default function Footer({ navigate }: Props) {
         </div>
         <div className="footer-bottom">
           <span>© {y} Prudential International School. All rights reserved.</span>
-          {/* Designed by link — uncomment and update href when ready */}
-          {/* <a href="https://prudentialdesignstudio.com" target="_blank" rel="noopener noreferrer" className="footer-designed-by">Designed by Prudential Design Studio</a> */}
+          <a href="https://sitespark.co" target="_blank" rel="noopener noreferrer" className="footer-powered-by">
+            <span>Powered by</span>
+            <img src="/sitespark-logo.png" alt="SiteSpark" className="footer-powered-by-logo" />
+            <span className="footer-powered-by-name">SiteSpark</span>
+          </a>
         </div>
       </div>
     </footer>
